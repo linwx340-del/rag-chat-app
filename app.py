@@ -116,7 +116,7 @@ def retrieve(index, chunks, query, top_k):
             results.append((score, chunks[i]))
     return results
 
-def generate(client, query, results):
+def generate_stream(client, query, results):
     context = "\n\n".join(f"[资料{idx+1}] {r[1]['text']}" for idx, r in enumerate(results))
     prompt = f"""请只根据下面提供的资料回答问题，资料里没有的内容就明确说不知道，不要编造。
 
@@ -126,12 +126,17 @@ def generate(client, query, results):
 问题：{query}
 
 回答："""
-    resp = client.chat.completions.create(
+    stream = client.chat.completions.create(
         model="deepseek-chat",
         messages=[{"role": "user", "content": prompt}],
         temperature=0.3,
+        stream=True,
     )
-    return resp.choices[0].message.content
+    for chunk in stream:
+        if chunk.choices:
+            delta = chunk.choices[0].delta
+            if delta and delta.content:
+                yield delta.content
 
 # ================= 主界面 =================
 uploaded = st.file_uploader("上传文档（txt / pdf / docx，可多选）",
@@ -153,25 +158,48 @@ if st.button("📥 建立索引", type="primary", disabled=not uploaded):
             index, chunks = build_index(docs)
             st.session_state["index"] = index
             st.session_state["chunks"] = chunks
+            st.session_state["messages"] = []   # 换了文档，清空旧对话
             st.success(f"✅ 已入库 {len(chunks)} 个文本片段，现在可以提问了")
 
-# 提问区
+# ================= 提问区（对话历史 + 流式输出） =================
 if "index" in st.session_state:
     st.markdown("---")
-    query = st.text_input("请输入问题：")
-    if st.button("🔍 提问", disabled=not (query and api_key)):
+    if "messages" not in st.session_state:
+        st.session_state["messages"] = []   # {"role": "user"/"assistant", "content": str, "sources": list}
+
+    # 清空对话按钮
+    if st.session_state["messages"]:
+        if st.button("🗑️ 清空对话"):
+            st.session_state["messages"] = []
+            st.rerun()
+
+    # 渲染历史对话
+    for msg in st.session_state["messages"]:
+        with st.chat_message(msg["role"]):
+            st.write(msg["content"])
+            if msg["role"] == "assistant" and msg.get("sources"):
+                with st.expander("🔎 依据的原文片段"):
+                    for idx, (score, c) in enumerate(msg["sources"]):
+                        st.caption(f"片段 {idx+1} · 相似度 {score:.3f} · 来自《{c['file']}》")
+                        st.write(c["text"])
+
+    # 输入问题（流式回答）
+    if prompt := st.chat_input("请输入问题（基于已入库文档）："):
         if not api_key:
             st.error("请先在左侧填 DeepSeek API Key")
         else:
             client = OpenAI(api_key=api_key, base_url="https://api.deepseek.com")
-            results = retrieve(st.session_state["index"], st.session_state["chunks"], query, top_k)
-            with st.spinner("生成答案中……"):
-                answer = generate(client, query, results)
+            results = retrieve(st.session_state["index"], st.session_state["chunks"], prompt, top_k)
 
-            st.markdown("### 回答")
-            st.write(answer)
+            st.session_state["messages"].append({"role": "user", "content": prompt})
+            with st.chat_message("user"):
+                st.write(prompt)
 
-            st.markdown("### 依据的原文片段")
-            for idx, (score, c) in enumerate(results):
-                with st.expander(f"片段 {idx+1}（相似度 {score:.3f} · 来自《{c['file']}》）"):
-                    st.write(c["text"])
+            with st.chat_message("assistant"):
+                answer = st.write_stream(generate_stream(client, prompt, results))
+                with st.expander("🔎 依据的原文片段"):
+                    for idx, (score, c) in enumerate(results):
+                        st.caption(f"片段 {idx+1} · 相似度 {score:.3f} · 来自《{c['file']}》")
+                        st.write(c["text"])
+
+            st.session_state["messages"].append({"role": "assistant", "content": answer, "sources": results})
