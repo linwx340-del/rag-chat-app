@@ -1,0 +1,10 @@
+# API 后端 / Docker 镜像运行时依赖（不含 streamlit 网页版）
+openai
+fastapi
+uvicorn
+python-multipart
+sentence-transformers
+faiss-cpu
+pdfplumber
+python-docx
+python-dotenv

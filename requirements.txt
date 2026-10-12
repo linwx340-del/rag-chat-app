@@ -4,3 +4,7 @@ faiss-cpu
 openai
 pdfplumber
 python-docx
+python-dotenv
+fastapi
+uvicorn
+python-multipart
