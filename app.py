@@ -1,8 +1,10 @@
 # -*- coding: utf-8 -*-
 """RAG 网页版（Streamlit）——核心逻辑在 rag 包，这里只负责界面。
 
-多轮记忆：同一浏览器会话里，模型会记住之前的问答（st.session_state 存对话，
-生成时把历史拼进 prompt）。
+界面看点：
+    - 顶部数据看板：入库文档数 / 文本片段数 / 问答轮数 / 检索 TOP_K
+    - 来源引用做成带相似度进度条的卡片，可追溯
+    - 多轮记忆：同一浏览器会话里，模型会记住之前的问答
 
 运行（在 learn_ai 目录下）：
     streamlit run app.py
@@ -16,6 +18,34 @@ from rag.loader import read_file_bytes
 st.set_page_config(page_title="RAG 知识问答", page_icon="📚", layout="wide")
 st.title("📚 RAG 知识问答系统")
 st.caption("上传文档 → 建立语义索引 → 提问，答案会标注它依据的原文片段")
+
+
+# ================= UI 组件 =================
+def render_dashboard(doc_count, chunk_count, round_count, top_k):
+    """顶部数据看板：四个统计卡片。"""
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("📄 入库文档", f"{doc_count} 个")
+    c2.metric("🧩 文本片段", f"{chunk_count} 个")
+    c3.metric("💬 问答轮数", f"{round_count}")
+    c4.metric("🎯 检索 TOP_K", f"{top_k}")
+
+
+def render_sources(results):
+    """来源引用卡片：相似度进度条 + 来源文件 + 原文片段。"""
+    if not results:
+        st.caption("未检索到相关片段")
+        return
+    for idx, (score, c) in enumerate(results, 1):
+        pct = max(0.0, min(1.0, float(score)))   # 相似度可能略越界，夹到 [0,1]
+        with st.container(border=True):
+            top = st.columns([4, 1])
+            with top[0]:
+                st.markdown(f"**片段 {idx}** · 来自《{c['file']}》")
+            with top[1]:
+                st.markdown(f"`{score:.3f}`")
+            st.progress(pct)
+            st.write(c["text"])
+
 
 # ================= API Key（优先 st.secrets / .env，其次手动输入） =================
 with st.sidebar:
@@ -70,8 +100,16 @@ if st.button("📥 建立索引", type="primary", disabled=not uploaded):
             else:
                 st.session_state["index"] = index
                 st.session_state["chunks"] = chunks
+                st.session_state["doc_count"] = len(docs)
                 st.session_state["messages"] = []
                 st.success(f"✅ 已入库 {len(chunks)} 个文本片段，现在可以提问了")
+
+# ================= 数据看板 =================
+doc_count = st.session_state.get("doc_count", 0)
+chunk_count = len(st.session_state.get("chunks", []))
+round_count = sum(1 for m in st.session_state.get("messages", []) if m["role"] == "user")
+st.markdown("---")
+render_dashboard(doc_count, chunk_count, round_count, top_k)
 
 # ================= 提问区（对话历史 + 流式输出 + 多轮记忆） =================
 if "index" in st.session_state:
@@ -88,10 +126,8 @@ if "index" in st.session_state:
         with st.chat_message(msg["role"]):
             st.write(msg["content"])
             if msg["role"] == "assistant" and msg.get("sources"):
-                with st.expander("🔎 依据的原文片段"):
-                    for idx, (score, c) in enumerate(msg["sources"]):
-                        st.caption(f"片段 {idx + 1} · 相似度 {score:.3f} · 来自《{c['file']}》")
-                        st.write(c["text"])
+                with st.expander("🔎 查看依据的原文片段"):
+                    render_sources(msg["sources"])
 
     if prompt := st.chat_input("请输入问题（基于已入库文档）："):
         if not api_key:
@@ -109,10 +145,9 @@ if "index" in st.session_state:
             with st.chat_message("assistant"):
                 answer = st.write_stream(
                     generate_stream(prompt, results, api_key=api_key, history=history))
-                with st.expander("🔎 依据的原文片段"):
-                    for idx, (score, c) in enumerate(results):
-                        st.caption(f"片段 {idx + 1} · 相似度 {score:.3f} · 来自《{c['file']}》")
-                        st.write(c["text"])
+                st.caption(f"🎯 本轮检索命中 {len(results)} 个相关片段")
+                with st.expander("🔎 查看依据的原文片段"):
+                    render_sources(results)
 
             st.session_state["messages"].append(
                 {"role": "assistant", "content": answer, "sources": results})
