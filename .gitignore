@@ -28,3 +28,6 @@ Thumbs.db
 # IDE
 .idea/
 .vscode/
+
+# 多租户配置（里面有各租户 API Key，不能提交）
+tenants.json

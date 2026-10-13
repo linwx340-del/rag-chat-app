@@ -10,6 +10,8 @@ RUN pip install --no-cache-dir -r requirements-api.txt \
 # 再复制源码（只带 API 运行时，不含网页版/命令行/测试）
 COPY rag ./rag
 COPY api.py .
+COPY provision.py .
+COPY tenants.example.json .
 
 # bge 模型缓存目录（用卷挂载，避免每次容器重建都重新下载模型）
 ENV HF_HOME=/app/.hf_cache \

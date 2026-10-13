@@ -6,6 +6,7 @@ services:
     environment:
       - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY:-}
       - CHAT_HISTORY_DB=/app/data/chat_history.db
+      - RAG_TENANTS_FILE=/app/data/tenants.json   # 多租户配置（放卷里，不烘焙进镜像）
     volumes:
       - rag_model_cache:/app/.hf_cache   # bge 模型缓存（首次下载，之后复用）
       - rag_index:/app/.rag_index        # 索引持久化（重启免重建）

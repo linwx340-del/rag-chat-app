@@ -9,7 +9,8 @@
     indexer    FAISS 索引（构建 + 持久化）
     retriever  检索
     generator  生成（DeepSeek）
-    history    会话记忆（SQLite）
+    history    会话记忆（SQLite，多租户隔离）
+    tenants    多租户注册表 + API Key 鉴权（半产品化配置）
     pipeline   编排
 """
 from .config import (
@@ -25,6 +26,11 @@ from .indexer import build_index, load_index, save_index
 from .retriever import retrieve
 from .generator import build_prompt, generate, generate_stream
 from .history import add_message, get_history, clear_session
+from .tenants import (
+    generate_api_key, hash_key, load_tenants, get_tenant,
+    require_role, tenant_scope, index_dir_for, TenantError,
+    ADMIN_ROLE, USER_ROLE, ROLES,
+)
 from .pipeline import build_from_folder, build_from_files, query
 
 __all__ = [
@@ -39,5 +45,8 @@ __all__ = [
     "retrieve",
     "build_prompt", "generate", "generate_stream",
     "add_message", "get_history", "clear_session",
+    "generate_api_key", "hash_key", "load_tenants", "get_tenant",
+    "require_role", "tenant_scope", "index_dir_for", "TenantError",
+    "ADMIN_ROLE", "USER_ROLE", "ROLES",
     "build_from_folder", "build_from_files", "query",
 ]

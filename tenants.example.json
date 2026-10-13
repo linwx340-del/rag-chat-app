@@ -1,0 +1,18 @@
+{
+  "tenants": {
+    "machinery_admin": {
+      "name": "某机械制造公司 · 管理员",
+      "api_key": "mk-替换成真实key",
+      "role": "admin",
+      "kb": "machinery",
+      "docs_dir": "tenants/machinery/docs"
+    },
+    "machinery_worker": {
+      "name": "某机械制造公司 · 员工",
+      "api_key": "mk-替换成另一个key",
+      "role": "user",
+      "kb": "machinery",
+      "docs_dir": null
+    }
+  }
+}
