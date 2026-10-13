@@ -1,39 +1,15 @@
 @echo off
 chcp 65001 >nul
 cd /d "%~dp0"
-
 echo ============================================
-echo   RAG 知识问答系统 - 一键启动
+echo   RAG 网页版启动
 echo ============================================
-
-rem 1) 检查 .env
-if not exist ".env" (
-    echo 未找到 .env，正在从模板创建...
-    copy .env.example .env >nul
-    echo 请先打开 .env，把 sk-xxx 换成你的真实 DeepSeek Key，然后重新运行本脚本。
-    pause
-    exit /b
-)
-
-rem 2) 检查依赖
-python -c "import streamlit, sentence_transformers, faiss, openai, dotenv" >nul 2>nul
-if errorlevel 1 (
-    echo 正在安装依赖（阿里云镜像）...
-    python -m pip install -r requirements.txt -i https://mirrors.aliyun.com/pypi/simple/
-)
-
-rem 3) 选择启动方式
+echo 正在启动，浏览器会自动打开 http://localhost:8501
+echo 首次建索引会下载模型，请耐心等待
+echo 停止程序：在这个窗口按 Ctrl+C
 echo.
-echo 请选择启动方式：
-echo   [1] 网页版（Streamlit）
-echo   [2] API 后端（FastAPI）
-set /p choice=输入 1 或 2 后回车：
-
-if "%choice%"=="1" (
-    streamlit run app.py
-) else if "%choice%"=="2" (
-    uvicorn api:app --reload
-) else (
-    echo 无效输入，默认启动网页版
-    streamlit run app.py
-)
+streamlit run app.py
+echo.
+echo ============ 程序已停止 ============
+echo 如果上面有红色/英文报错，截图发给我
+pause

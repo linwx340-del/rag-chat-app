@@ -43,6 +43,7 @@ flowchart LR
 
 ## 功能特性
 
+- 网页版带完整文档管理界面：上传 / 列表 / 删除文档、一键重建索引，文档与索引都落盘持久化
 - 支持 txt / pdf / docx 三种文档格式
 - 语义向量检索（bge 中文向量模型 + FAISS），按「意思」匹配，不靠关键词
 - 答案防幻觉：只基于检索到的资料回答，资料里没有就明确说不知道
@@ -230,7 +231,7 @@ learn_ai/
 │   ├── history.py          # 会话记忆（SQLite，按 租户 + session_id）
 │   ├── tenants.py          # 多租户注册表 + API Key 鉴权（纯标准库）
 │   └── pipeline.py         # 编排（加载→索引→检索→生成）
-├── app.py                  # 网页版（Streamlit）
+├── app.py                  # 网页版（Streamlit，文档管理界面 + 问答）
 ├── cli.py                  # 命令行入口
 ├── api.py                  # 后端（FastAPI：REST + SSE + 多租户鉴权）
 ├── provision.py            # 半产品化初始化：按 tenants.json 建索引
